@@ -1,0 +1,201 @@
+%{
+    #include<iostream>
+	#include "common_defs.hpp"
+	#include "scope.hpp"
+	#include "table.hpp"
+	#include "output.hpp"
+	#include "node.hpp"
+
+    using namespace std;
+    #define YYERROR_VERBOSE 1
+	#define YYDEBUG 1
+
+    int yylex();
+    void yyerror(char const*);
+
+
+	bool isNum(const nodes::BasicType& t){
+		return t == TINT || t == TBYTE;
+	}
+
+
+	Scope global_scope;
+	Scope* curr_scope;
+%}
+
+%token VOID INT BYTE B BOOL TRUE FALSE RETURN IF WHILE
+%token BREAK CONTINUE PRECOND SC COMMA LBRACE RBRACE ID NUM STRING
+
+%precedence STATEMENT_REDUCE
+%nonassoc ELSE
+
+%right ASSIGN
+%nonassoc OR
+%nonassoc AND
+%left RELOP_EQ
+%nonassoc RELOP_REL
+%left PLUSMINUS
+%left MULDIV
+%right NOT
+%left LPAREN RPAREN
+// TODO: resolve assoc for operators
+
+// why?
+%precedence NEG
+
+%%
+
+// TODO ADD EF TOKEN AFTER Funcs
+Program :  Funcs {
+	if (!global_scope.TypeExistsRecursive("main") ||
+		!global_scope.GetTypeRecursive("main").m_type==TVOID ||
+		// TODO add check for empty function parameters
+		){
+			output::errorMainMissing();
+	}
+	exit(0);	
+	}
+		;
+		
+Funcs	: 
+		%empty 
+		| FuncDecl Funcs
+		;
+		
+FuncDecl :  RetType ID LPAREN Formals RPAREN PreConditions LBRACE Statements RBRACE
+		 ;
+		 
+
+RetType  :  Type
+		 |  VOID
+		 ;
+		 
+		 
+Formals	 :
+		 	%empty
+		 |	FormalsList
+		 ;
+		 
+		 
+FormalsList	 :	
+			FormalsDecl
+		 |	FormalsDecl COMMA FormalsList
+		 ;
+
+FormalsDecl	 :	
+			Type ID
+		 ;
+
+PreConditions	 :	
+		 	PreConditions PreCondition
+		 |	%empty
+		 ;
+
+PreCondition	 :	
+			PRECOND LPAREN Exp RPAREN
+		 ;
+
+Statements	 :	
+		 	Statement
+		 |	Statements Statement
+		 ;
+
+Statement	 :	
+			NonIfStatement %prec STATEMENT_REDUCE
+		 |	IfStatement
+		 |	IfElseStatement %prec STATEMENT_REDUCE
+		 ;
+		 
+NonIfStatement   :
+			LBRACE Statements RBRACE
+		 |	Type ID SC
+		 |	Type ID ASSIGN Exp SC
+		 |	ID ASSIGN Exp SC
+		 |	Call SC
+		 |	RETURN SC
+		 |	RETURN Exp SC
+		 |	WHILE LPAREN Exp RPAREN Statement
+		 |	BREAK SC
+		 |	CONTINUE SC
+		 ;
+		 
+IfStatement   :
+			IF LPAREN Exp RPAREN Statement
+		 ;
+		 
+IfElseStatement   :
+		 	IF LPAREN Exp RPAREN NonIfStatement ELSE Statement
+		 |	IF LPAREN Exp RPAREN IfElseStatement ELSE Statement
+		 ;
+		 
+		 
+
+Call	 :	
+			ID LPAREN ExpList RPAREN
+		 |	ID LPAREN RPAREN
+		 ;
+
+ExpList	 :	
+			Exp
+		 |	Exp COMMA ExpList
+		 ;
+
+Type	 :	
+			INT
+		 |	BYTE
+		 |	BOOL
+		 ;
+
+Exp	    :	
+			LPAREN Exp RPAREN
+		 |  Exp PLUSMINUS Exp %prec PLUSMINUS
+		 |  Exp MULDIV Exp %prec MULDIV
+		 |	ID
+		 |	Call
+		 |	NUM
+		 |	NUM B
+		 |	STRING
+		 |	TRUE
+		 |	FALSE
+		 |	NOT Exp %prec NEG
+		 |	Exp AND Exp {
+			 	if (($1)->getType()!=TBOOL || ($2)->getType()!=TBOOL){
+					 output::errorMismatch(yylineno);
+				}
+				$$ = new nodes::AndExpression();
+		 		}
+		 |	Exp OR Exp {
+			 	if (($1)->getType()!=TBOOL || ($2)->getType()!=TBOOL){
+					 output::errorMismatch(yylineno);
+				}
+				$$ = new nodes::OrExpression();
+		 		}
+		 |	Exp RELOP_REL Exp %prec RELOP_REL {
+			 		if (!isNum($1->getType() || !isNum($3->getType())){
+						 output::errorMistmatch(yylineno);
+					 }
+					$$ = new nodes::RelOpExpression();
+		 		}
+
+		 |	Exp RELOP_EQ Exp %prec RELOP_EQ {
+			 		if (!isNum($1->getType() || !isNum($3->getType())){
+						 output::errorMistmatch(yylineno);
+					 }
+					$$ = new nodes::RelOpExpression();			 		
+		 		}
+		 ;
+
+// ASK ABOUT PREC
+%%
+
+int main()
+{
+	curr_scope = new Scope()
+	global_scope = *curr_scope;
+    return yyparse();
+}
+
+void yyerror(char const* s)
+{
+	cout <<"error"<<endl;
+}
