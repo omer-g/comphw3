@@ -15,7 +15,7 @@
 
 
 	bool isNum(const nodes::BasicType& t){
-		return t == TINT || t == TBYTE;
+		return t == nodes::TINT || t == nodes::TBYTE;
 	}
 
 
@@ -48,12 +48,12 @@
 // TODO ADD EF TOKEN AFTER Funcs
 Program :  Funcs {
 	if (!global_scope.TypeExistsRecursive("main") ||
-		!global_scope.GetTypeRecursive("main").m_type==TVOID ||
-		// TODO add check for empty function parameters
+			!global_scope.GetTypeRecursive("main").m_type==TVOID ||
+			!global_scope.GetTypeRecursive("main").m_function_args.IsEmpty()
 		){
 			output::errorMainMissing();
 	}
-	exit(0);	
+	exit(0);
 	}
 		;
 		
@@ -66,8 +66,8 @@ FuncDecl :  RetType ID LPAREN Formals RPAREN PreConditions LBRACE Statements RBR
 		 ;
 		 
 
-RetType  :  Type
-		 |  VOID
+RetType  :  Type { $$ = $1; }
+		 |  VOID { $$ = new nodes::Type(nodes::TVOID); }
 		 ;
 		 
 		 
@@ -148,38 +148,54 @@ Type	 :
 
 Exp	    :	
 			LPAREN Exp RPAREN
-		 |  Exp PLUSMINUS Exp %prec PLUSMINUS
-		 |  Exp MULDIV Exp %prec MULDIV
-		 |	ID
-		 |	Call
-		 |	NUM
-		 |	NUM B
-		 |	STRING
-		 |	TRUE
-		 |	FALSE
-		 |	NOT Exp %prec NEG
+		 |  Exp PLUSMINUS Exp %prec PLUSMINUS {
+			 		if (!isNum($1->getType()) || !isNum($3->getType())){
+						 output::errorMismatch(yylineno);
+					}
+					$$ = new PlusMinusExpression();
+		 		}
+		 |  Exp MULDIV Exp %prec MULDIV {
+			 		if (!isNum($1->getType()) || !isNum($3->getType())){
+						 output::errorMismatch(yylineno);
+					}
+					$$ = new MulDivExpression();
+		 		}
+		 |	ID { /* TODO HERE ADD SYMBOL */ }
+		 |	Call { $$ = $1; }
+		 |	NUM { $$ = $1; }
+		 |	NUM B { $$ = $1; }
+		 |	STRING { $$ = $1; }
+		 |	TRUE { $$ = $1; }
+		 |	FALSE { $$ = $1; }
+		 |	NOT Exp %prec NEG {
+			 		if (($2)->getType()!=nodes::TBOOL){
+						 output::errorMismatch(yylineno)
+					 }
+					 $$ = new NotExpression();
+
+		 		}
 		 |	Exp AND Exp {
-			 	if (($1)->getType()!=TBOOL || ($2)->getType()!=TBOOL){
+			 	if (($1)->getType()!=nodes::TBOOL || ($2)->getType()!=nodes::TBOOL){
 					 output::errorMismatch(yylineno);
 				}
 				$$ = new nodes::AndExpression();
 		 		}
 		 |	Exp OR Exp {
-			 	if (($1)->getType()!=TBOOL || ($2)->getType()!=TBOOL){
+			 	if (($1)->getType()!=nodes::TBOOL || ($2)->getType()!=nodes::TBOOL){
 					 output::errorMismatch(yylineno);
 				}
 				$$ = new nodes::OrExpression();
 		 		}
 		 |	Exp RELOP_REL Exp %prec RELOP_REL {
 			 		if (!isNum($1->getType() || !isNum($3->getType())){
-						 output::errorMistmatch(yylineno);
+						 output::errorMismatch(yylineno);
 					 }
 					$$ = new nodes::RelOpExpression();
 		 		}
 
 		 |	Exp RELOP_EQ Exp %prec RELOP_EQ {
 			 		if (!isNum($1->getType() || !isNum($3->getType())){
-						 output::errorMistmatch(yylineno);
+						 output::errorMismatch(yylineno);
 					 }
 					$$ = new nodes::RelOpExpression();			 		
 		 		}
@@ -190,8 +206,14 @@ Exp	    :
 
 int main()
 {
-	curr_scope = new Scope()
+	// curr_scope is the current scope.
+	// when leaving scope, curr_scope needs to be deleted and reset to the
+	// pointer of the father.
+	curr_scope = new Scope();
+
 	global_scope = *curr_scope;
+	global_scope.AddTypeIdentifier(nodes::TVOID, "print");
+	global_scope.AddTypeIdentifier(nodes::TVOID, "printi");
     return yyparse();
 }
 

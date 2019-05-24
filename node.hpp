@@ -100,31 +100,35 @@ public:
     Expression(BasicType inType): Node(inType) {}
 };
 
-class AndExpression: public Node {
+class AndExpression: public Expression {
 public:
-    AndExpression() : Node(TBOOL) {}
+    AndExpression() : Expression(TBOOL) {}
 };
 
-class OrExpression: public Node {
+class OrExpression: public Expression {
 public:
-    OrExpression() : Node(TBOOL){}
+    OrExpression() : Expression(TBOOL){}
 };
 
-class RelOpExpression: public Node {
+class RelOpExpression: public Expression {
 public:
-    RelOpExpression() : Node(TBOOL){}
+    RelOpExpression() : Expression(TBOOL){}
 };
 
+class NotExpression: public Expression {
+public:
+    NotExpression() : Expression(TBOOL){}
+};
 
 
 
 // Decide if byte or int
 class MulDivExpression: public Node {
-    MulDivExpression(BasicType inType): Node(inType) {}
+    MulDivExpression(): Node(TINT) {}
 };
 
 class PlusMinusExpression: public Node {
-    PlusMinusExpression(BasicType inType): Node(inType) {}
+    PlusMinusExpression(): Node(TINT) {}
 };
 
 // Check if need to add more nodes for If, While etc.

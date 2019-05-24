@@ -1,2 +1,1 @@
-add condition of no parameters in main
-add easier way to check FuncArg is empty / non-function etc.
+add errorSyn to ypp for syntax errors.

@@ -8,6 +8,7 @@
 #include "common_defs.hpp"
 #include "node.hpp"
 
+
 // Changed entry type to be the enum from node.hpp
 typedef nodes::BasicType EntryType;
 typedef std::string EntryName;
@@ -27,6 +28,19 @@ public:
 	std::list<ExpressionType> m_args_list; // A list of all args types of the function, for example int func (int a, char b) will have [int, int]
 	
 	/* Methods */
+	
+	/*
+		Returns the number of arguments that currently exist in the list
+	*/
+	int GetSize()
+	{
+		return m_args_list.size();
+	}
+	
+	bool IsEmpty()
+	{
+		return ((*this).GetSize == 0);
+	}
 	
 	/* Check equal */
 	bool IsEqual (FuncArgs rhs)
